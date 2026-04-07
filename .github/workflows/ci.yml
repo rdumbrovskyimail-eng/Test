@@ -1,0 +1,26 @@
+name: Android CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Download external JAR
+        run: |
+          mkdir -p app/libs
+          # Пример скачивания JAR файла (замените URL на ваш)
+          # curl -L -o app/libs/external-lib.jar https://example.com/library.jar
+          echo "Simulating JAR download..."
+          touch app/libs/external-lib.jar
+
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
