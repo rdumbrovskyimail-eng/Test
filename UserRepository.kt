@@ -51,8 +51,6 @@ interface UserRepository {
     suspend fun searchUsers(query: String): NetworkResult<List<User>>
     suspend fun getUsersByRole(role: UserRole): NetworkResult<List<User>>
     fun getUserStream(id: String): Flow<NetworkResult<User>>
-    fun getUserCount(): Int
-    suspend fun updateUserAvatar(id: String, avatarUrl: String): NetworkResult<User>
 }
 
 @Singleton
@@ -120,7 +118,7 @@ class UserRepositoryImpl @Inject constructor(
             cache.remove(id)
             clearListCache()
         }
-        result.let { if (it is NetworkResult.Error) it else NetworkResult.Success(Unit) }
+        NetworkResult.Success(Unit)
     }
 
     override fun observeUsers(page: Int, limit: Int): Flow<NetworkResult<List<User>>> = flow {
@@ -156,38 +154,6 @@ class UserRepositoryImpl @Inject constructor(
         emit(NetworkResult.Loading)
         emit(getUser(id))
     }.flowOn(dispatcher)
-
-    override fun getUserCount(): Int = cache.size
-
-    override suspend fun updateUserAvatar(id: String, avatarUrl: String): NetworkResult<User> =
-        withContext(dispatcher) {
-            val result = safeApiCall {
-                api.updateUser(id, UpdateUserRequest(avatarUrl = avatarUrl)).toDomain()
-            }
-            if (result is NetworkResult.Success) cache[id] = result.value
-            result
-        }
-
-    suspend fun preloadUsers(): List<NetworkResult<List<User>>> =
-        withContext(dispatcher) {
-            val pages = (1..3).map { page ->
-                kotlinx.coroutines.async {
-                    safeApiCall { api.getUsers(page, DEFAULT_PAGE_SIZE).map { it.toDomain() } }
-                        .also { result ->
-                            if (result is NetworkResult.Success) {
-                                val key = "page_${page}_limit_$DEFAULT_PAGE_SIZE"
-                                listCache[key] = result.value
-                                result.value.forEach { cache[it.id] = it }
-                            }
-                        }
-                }
-            }
-            pages.map { it.await() }
-        }
-
-    private companion object {
-        const val DEFAULT_PAGE_SIZE = 20
-    }
 
     fun clearCache() {
         cache.clear()
@@ -226,7 +192,4 @@ class FakeUserRepository : UserRepository {
     override suspend fun getUsersByRole(role: UserRole) =
         NetworkResult.Success(users.filter { it.role == role })
     override fun getUserStream(id: String) = flow { emit(getUser(id)) }
-    override fun getUserCount(): Int = users.size
-    override suspend fun updateUserAvatar(id: String, avatarUrl: String): NetworkResult<User> =
-        NetworkResult.Error(501, "Not implemented")
 }
