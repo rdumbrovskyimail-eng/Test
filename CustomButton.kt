@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class ButtonVariant { Primary, Secondary, Outlined, Ghost, Danger }
+enum class ButtonVariant { Primary, Secondary, Outlined, Ghost, Danger, Success }
 enum class ButtonSize { Small, Medium, Large }
 
 data class ButtonConfig(
@@ -31,7 +31,9 @@ data class ButtonConfig(
     val isFullWidth: Boolean = false,
     val leadingIcon: ImageVector? = null,
     val trailingIcon: ImageVector? = null,
-    val cornerRadius: Dp = 12.dp
+    val cornerRadius: Dp = 8.dp,
+    val elevation: Dp = 2.dp,
+    val tooltipText: String? = null
 )
 
 @Composable
@@ -46,8 +48,8 @@ fun CustomButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = tween(100),
+        targetValue = if (isPressed) ButtonTokens.PressedScale else 1f,
+        animationSpec = tween(ButtonTokens.AnimationDuration),
         label = "scale"
     )
 
@@ -95,12 +97,23 @@ fun CustomButton(
                 disabledContainerColor = animatedBg.copy(alpha = 0.38f),
                 disabledContentColor = contentColor.copy(alpha = 0.38f)
             ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = config.elevation),
             contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
             interactionSource = interactionSource
         ) {
             ButtonContent(text, config, contentColor, fontSize, iconSize)
         }
     }
+}
+
+@Composable
+private fun ButtonIcon(icon: ImageVector, size: Dp, tint: Color) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(size),
+        tint = tint
+    )
 }
 
 @Composable
@@ -120,12 +133,7 @@ private fun ButtonContent(
         Spacer(Modifier.width(8.dp))
     } else {
         config.leadingIcon?.let { icon ->
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(iconSize),
-                tint = contentColor
-            )
+            ButtonIcon(icon = icon, size = iconSize, tint = contentColor)
             Spacer(Modifier.width(6.dp))
         }
     }
@@ -137,12 +145,7 @@ private fun ButtonContent(
     )
     config.trailingIcon?.let { icon ->
         Spacer(Modifier.width(6.dp))
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(iconSize),
-            tint = contentColor
-        )
+        ButtonIcon(icon = icon, size = iconSize, tint = contentColor)
     }
 }
 
@@ -156,14 +159,15 @@ private fun resolveColors(variant: ButtonVariant, enabled: Boolean): ColorTriple
         ButtonVariant.Outlined -> ColorTriple(Color.Transparent, Color(0xFF6200EE), Color(0xFF6200EE))
         ButtonVariant.Ghost -> ColorTriple(Color.Transparent, Color(0xFF6200EE), Color.Transparent)
         ButtonVariant.Danger -> ColorTriple(Color(0xFFB00020), Color.White, Color.Transparent)
+        ButtonVariant.Success -> ColorTriple(Color(0xFF388E3C), Color.White, Color.Transparent)
     }
 }
 
 private fun resolveSize(size: ButtonSize): SizeQuad {
     return when (size) {
-        ButtonSize.Small -> SizeQuad(12.dp, 6.dp, 13.sp, 16.dp)
-        ButtonSize.Medium -> SizeQuad(20.dp, 10.dp, 15.sp, 20.dp)
-        ButtonSize.Large -> SizeQuad(28.dp, 14.dp, 17.sp, 24.dp)
+        ButtonSize.Small -> SizeQuad(12.dp, 6.dp, 13.sp, ButtonTokens.SmallIconSize)
+        ButtonSize.Medium -> SizeQuad(20.dp, 10.dp, 15.sp, ButtonTokens.MediumIconSize)
+        ButtonSize.Large -> SizeQuad(28.dp, 14.dp, 17.sp, ButtonTokens.LargeIconSize)
     }
 }
 
@@ -206,9 +210,20 @@ fun IconTextButton(
     )
 }
 
+@Composable
+fun LoadingButton(text: String, modifier: Modifier = Modifier) {
+    CustomButton(
+        text = text,
+        onClick = {},
+        modifier = modifier,
+        config = ButtonConfig(isLoading = true),
+        enabled = false
+    )
+}
+
 object ButtonTokens {
-    val PressedScale = 0.97f
-    val AnimationDuration = 100
+    val PressedScale = 0.95f
+    val AnimationDuration = 150
     val DefaultCornerRadius = 12.dp
     val SmallIconSize = 16.dp
     val MediumIconSize = 20.dp
