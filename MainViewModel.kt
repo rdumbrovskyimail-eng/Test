@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class SortOrder { Ascending, Descending }
+
 data class MainUiState(
     val users: List<User> = emptyList(),
     val isLoading: Boolean = false,
@@ -24,7 +26,9 @@ data class MainUiState(
     val hasMore: Boolean = true,
     val totalCount: Int = 0,
     val selectedUser: User? = null,
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+    val itemsPerPage: Int = 20,
+    val sortOrder: SortOrder = SortOrder.Ascending
 )
 
 sealed class MainUiEvent {
@@ -36,6 +40,9 @@ sealed class MainUiEvent {
     object ClearError : MainUiEvent()
     object ClearSelection : MainUiEvent()
     data class DeleteUser(val id: String) : MainUiEvent()
+    object ClearSearch : MainUiEvent()
+    data class SortUsers(val order: SortOrder) : MainUiEvent()
+    object RetryLastAction : MainUiEvent()
 }
 
 sealed class MainSideEffect {
@@ -56,6 +63,7 @@ class MainViewModel @Inject constructor(
     val sideEffects: Flow<MainSideEffect> = _sideEffects.receiveAsFlow()
 
     private val searchQueryFlow = MutableStateFlow("")
+    private var lastAction: (() -> Unit)? = null
 
     init {
         loadUsers()
@@ -92,11 +100,18 @@ class MainViewModel @Inject constructor(
             MainUiEvent.ClearError -> clearError()
             MainUiEvent.ClearSelection -> clearSelection()
             is MainUiEvent.DeleteUser -> deleteUser(event.id)
+            MainUiEvent.ClearSearch -> {
+                _uiState.update { it.copy(searchQuery = "") }
+                searchQueryFlow.value = ""
+            }
+            is MainUiEvent.SortUsers -> _uiState.update { it.copy(sortOrder = event.order) }
+            MainUiEvent.RetryLastAction -> lastAction?.invoke()
         }
     }
 
     private fun loadUsers(page: Int = 1) {
         viewModelScope.launch {
+            lastAction = { loadUsers(page) }
             _uiState.update { it.copy(isLoading = true, error = null) }
             when (val result = repository.getUsers(page, 20)) {
                 is NetworkResult.Success -> _uiState.update {
@@ -201,4 +216,9 @@ class MainViewModel @Inject constructor(
     val userCount: StateFlow<Int> = filteredUsers
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val sortedUsers: StateFlow<List<User>> = combine(filteredUsers, _uiState) { users, state ->
+        if (state.sortOrder == SortOrder.Ascending) users.sortedBy { it.name }
+        else users.sortedByDescending { it.name }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
