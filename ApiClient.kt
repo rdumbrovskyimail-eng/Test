@@ -9,8 +9,7 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     private const val BASE_URL = "https://api.example.com/v1/"
-    private const val TIMEOUT_SECONDS = 60L
-    private const val SHORT_TIMEOUT_SECONDS = 10L
+    private const val TIMEOUT_SECONDS = 30L
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -23,7 +22,6 @@ object ApiClient {
                 val request = chain.request().newBuilder()
                     .addHeader("Accept", "application/json")
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("Cache-Control", "no-cache")
                     .build()
                 chain.proceed(request)
             }
@@ -31,7 +29,6 @@ object ApiClient {
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .cache(okhttp3.Cache(java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"), 10L * 1024 * 1024))
             .build()
     }
 
@@ -60,27 +57,19 @@ sealed class NetworkResult<out T> {
 
 object NetworkUtils {
 
-    @JvmStatic
     fun isSuccessCode(code: Int): Boolean = code in 200..299
 
     fun parseErrorBody(body: String?): String {
-        if (body == null) return "No error body"
-        return try {
-            val json = com.google.gson.JsonParser.parseString(body).asJsonObject
-            json.get("message")?.asString
-                ?: json.get("error")?.asString
-                ?: "Unknown error"
+        return body?.let { try {
+            it.substringAfter("\"message\":\"").substringBefore("\"")
         } catch (e: Exception) {
             "Unknown error"
-        }
+        } } ?: "No error body"
     }
 
     fun buildQueryParams(map: Map<String, Any>): String {
         return map.entries.joinToString("&") { (k, v) -> "$k=$v" }
     }
-
-    fun buildQueryString(vararg pairs: Pair<String, Any>): String =
-        pairs.joinToString("&") { (k, v) -> "$k=$v" }
 }
 
 interface UserApi {
@@ -104,19 +93,6 @@ interface UserApi {
 
     @retrofit2.http.DELETE("users/{id}")
     suspend fun deleteUser(@retrofit2.http.Path("id") id: String): retrofit2.Response<Unit>
-
-    @retrofit2.http.PATCH("users/{id}")
-    suspend fun patchUser(
-        @retrofit2.http.Path("id") id: String,
-        @retrofit2.http.Body body: UpdateUserRequest
-    ): UserDto
-
-    @retrofit2.http.GET("users")
-    suspend fun getUsersByRole(
-        @retrofit2.http.Query("role") role: String,
-        @retrofit2.http.Query("page") page: Int = 1,
-        @retrofit2.http.Query("limit") limit: Int = 50
-    ): List<UserDto>
 }
 
 data class UserDto(
@@ -124,14 +100,11 @@ data class UserDto(
     val name: String,
     val email: String,
     val avatarUrl: String?,
-    val phone: String?,
     val createdAt: String,
     val updatedAt: String,
     val role: String,
     val isActive: Boolean
 )
-
-val UserDto.isAdmin: Boolean get() = role == "admin"
 
 data class CreateUserRequest(
     val name: String,
@@ -144,7 +117,6 @@ data class UpdateUserRequest(
     val name: String? = null,
     val email: String? = null,
     val avatarUrl: String? = null,
-    val phone: String? = null,
     val isActive: Boolean? = null
 )
 
@@ -165,7 +137,7 @@ suspend fun <T> safeApiCall(call: suspend () -> T): NetworkResult<T> {
 
 object PaginationHelper {
     const val DEFAULT_PAGE = 1
-    const val DEFAULT_LIMIT = 25
+    const val DEFAULT_LIMIT = 20
 
     data class Page(val current: Int, val limit: Int, val total: Int) {
         val hasNext: Boolean get() = current * limit < total
@@ -196,7 +168,7 @@ object RetryPolicy {
                 return block()
             } catch (e: Exception) {
                 lastException = e
-                val delay = INITIAL_DELAY_MS * (1L shl attempt)
+                val delay = INITIAL_DELAY_MS * (attempt + 1)
                 kotlinx.coroutines.delay(delay)
             }
         }
@@ -218,27 +190,14 @@ class AuthInterceptor(private val tokenProvider: () -> String?) : okhttp3.Interc
     }
 }
 
-class CacheInterceptor(private val maxAge: Int = 60) : okhttp3.Interceptor {
-    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
-        return chain.proceed(chain.request()).newBuilder()
-            .header("Cache-Control", "public, max-age=$maxAge")
-            .removeHeader("Pragma")
-            .build()
-    }
-}
-
 class TokenRefreshAuthenticator(
     private val refreshToken: suspend () -> String?
 ) : okhttp3.Authenticator {
     override fun authenticate(route: okhttp3.Route?, response: okhttp3.Response): okhttp3.Request? {
-        if (response.code != 401) return null
-        // Avoid infinite loops: if the previous attempt also had an Authorization header, stop.
-        if (response.request.header("Authorization") != null &&
-            response.priorResponse?.code == 401) return null
-        val newToken = kotlinx.coroutines.runBlocking { refreshToken() } ?: return null
-        return response.request.newBuilder()
-            .header("Authorization", "Bearer $newToken")
-            .build()
+        if (response.code == 401) {
+            return null
+        }
+        return null
     }
 }
 
