@@ -3,7 +3,8 @@
   "version": "1.0",
   "features": {
     "login": true,
-    "payment": false
+    "payment": true,
+    "analytics": true
   },
   "apiKeys": [
     "12345",
