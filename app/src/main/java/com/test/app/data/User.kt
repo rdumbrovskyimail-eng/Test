@@ -4,6 +4,8 @@ data class User(
     val id: String,
     val name: String,
     val email: String,
-    val age: Int,
-    val registrationDate: Long
+    val age: Int?,
+    val registrationDate: Long,
+    val isPremium: Boolean = false,
+    val avatarUrl: String? = null
 )
