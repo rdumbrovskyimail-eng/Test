@@ -2,7 +2,6 @@ package com.test.app
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.test.app.utils.LegacyUtils
 
 class MainActivity : AppCompatActivity() {
 
@@ -14,8 +13,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadInitialData() {
-        val helper = LegacyUtils()
-        helper.doSomeHeavyWork()
+        println("Loading data asynchronously...")
         println("Data loaded")
     }
     
