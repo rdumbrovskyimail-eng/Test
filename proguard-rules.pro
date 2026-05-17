@@ -3,4 +3,5 @@
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 
-# TODO: Add specific library rules here
+-keepattributes Signature
+-keep class retrofit2.** { *; }
