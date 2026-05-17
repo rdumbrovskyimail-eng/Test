@@ -1,13 +1,10 @@
 package com.test.app
 
-fun calculateSum(a: Int, b: Int): Int {
-    return a + b
+fun calculateSum(a: Int, b: Int, c: Int = 0): Int {
+    return a + b + c
 }
 
-@Deprecated("Do not use this anymore")
-fun oldLegacyMethod() {
-    println("This should be deleted")
-}
+
 
 fun printMessage(msg: String) {
     println("MSG: $msg")
