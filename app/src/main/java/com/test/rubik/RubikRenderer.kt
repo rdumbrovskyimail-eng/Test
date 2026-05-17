@@ -9,7 +9,7 @@ import javax.microedition.khronos.opengles.GL10
 
 class RubikRenderer : GLSurfaceView.Renderer {
 
-    private lateinit var cube: Cube
+    private lateinit var rubikModel: RubikModel
 
     private val vPMatrix = FloatArray(16)
     private val projectionMatrix = FloatArray(16)
@@ -18,29 +18,29 @@ class RubikRenderer : GLSurfaceView.Renderer {
     private val scratch = FloatArray(16)
 
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
-        // Темно-серый фон
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
-        // Включаем тест глубины для правильного отображения 3D
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         
-        cube = Cube()
+        // Инициализируем всю модель кубика Рубика
+        rubikModel = RubikModel()
     }
 
     override fun onDrawFrame(unused: GL10) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
-        // Камера: позиция (0, 3, -10), смотрит в центр (0,0,0)
-        Matrix.setLookAtM(viewMatrix, 0, 0f, 3f, -10f, 0f, 0f, 0f, 0f, 1f, 0f)
+        // Отдаляем камеру, чтобы весь куб 3x3x3 поместился в кадр
+        Matrix.setLookAtM(viewMatrix, 0, 0f, 4f, -12f, 0f, 0f, 0f, 0f, 1f, 0f)
         Matrix.multiplyMM(vPMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
 
-        // Вращение куба для демонстрации
-        val time = SystemClock.uptimeMillis() % 4000L
-        val angle = 0.090f * time.toInt()
+        // Вращаем весь кубик Рубика целиком по диагональной оси для демонстрации
+        val time = SystemClock.uptimeMillis() % 10000L
+        val angle = 0.036f * time.toInt()
         
-        Matrix.setRotateM(rotationMatrix, 0, angle, 1f, 1f, 0f)
+        Matrix.setRotateM(rotationMatrix, 0, angle, 1f, 1f, 1f)
         Matrix.multiplyMM(scratch, 0, vPMatrix, 0, rotationMatrix, 0)
 
-        cube.draw(scratch)
+        // Отрисовываем модель
+        rubikModel.draw(scratch)
     }
 
     override fun onSurfaceChanged(unused: GL10, width: Int, height: Int) {
