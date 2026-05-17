@@ -4,9 +4,12 @@ import com.test.app.data.User
 
 interface ApiService {
     
-    fun getUserProfile(userId: String): User
+    @GET("users/{id}")
+    suspend fun getUserProfile(userId: String): User
     
-    fun updateEmail(userId: String, newEmail: String): Boolean
+    @PUT("users/{id}/email")
+    @FormUrlEncoded
+    suspend fun updateEmail(userId: String, newEmail: String): Boolean
     
-    fun deleteAccount(userId: String)
+    suspend fun deleteAccount(userId: String)
 }
