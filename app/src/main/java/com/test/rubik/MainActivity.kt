@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.google.android.filament.compose.SceneView
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,17 +19,9 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             MaterialTheme {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF121212)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Rubik's Cube 3D - Session 1 Ready",
-                        color = Color.White
-                    )
-                }
+                SceneView(
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
