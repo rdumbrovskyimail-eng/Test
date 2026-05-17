@@ -17,6 +17,7 @@ class TestApplication : Application() {
     }
 
     private fun setupCrashHandler() {
+        println("Crashlytics initialized")
         println("Crash handler is ready")
     }
 }
